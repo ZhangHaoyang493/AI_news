@@ -21,39 +21,50 @@ def translate_title(title, client):
         return f"[翻译失败: {e}]"
 
 def send_to_feishu(results, webhook_url):
-    """将结果推送到飞书群机器人"""
+    """将结果推送到飞书群机器人（每5条分割为一条消息）"""
     if not results:
         return
 
-    post_elements = []
-    for i, item in enumerate(results, 1):
-        en_title = item.get("english_title", "")
-        zh_title = item.get("chinese_translation", "")
-        link = item.get("link", "")
+    batch_size = 5
+    total = len(results)
+    
+    for batch_index in range(0, total, batch_size):
+        batch = results[batch_index : batch_index + batch_size]
+        post_elements = []
         
-        display_title = zh_title if zh_title and not zh_title.startswith("[翻译失败:") else en_title
+        for local_i, item in enumerate(batch):
+            i = batch_index + local_i + 1
+            en_title = item.get("english_title", "")
+            zh_title = item.get("chinese_translation", "")
+            link = item.get("link", "")
+            
+            display_title = zh_title if zh_title and not zh_title.startswith("[翻译失败:") else en_title
+            
+            post_elements.append([
+                {"tag": "text", "text": f"{i}. "},
+                {"tag": "a", "text": display_title, "href": link}
+            ])
+            if display_title != en_title:
+                 post_elements.append([{"tag": "text", "text": f"   原文: {en_title}"}])
+                 
+            # 添加一个空段落，保证两条新闻之间有空白行分隔，增加易读性
+            post_elements.append([{"tag": "text", "text": ""}])
+                 
+        start_idx = batch_index + 1
+        end_idx = batch_index + len(batch)
+        title_suffix = f" (第 {start_idx}-{end_idx} 条，共 {total} 条)"
         
-        post_elements.append([
-            {"tag": "text", "text": f"{i}. "},
-            {"tag": "a", "text": display_title, "href": link}
-        ])
-        if display_title != en_title:
-             post_elements.append([{"tag": "text", "text": f"   原文: {en_title}"}])
-             
-        # 添加一个空段落，保证两条新闻之间有空白行分隔，增加易读性
-        post_elements.append([{"tag": "text", "text": ""}])
-             
-    payload = {
-        "msg_type": "post",
-        "content": {"post": {"zh_cn": {"title": "🤖 每日Techmeme AI 前沿资讯", "content": post_elements}}}
-    }
+        payload = {
+            "msg_type": "post",
+            "content": {"post": {"zh_cn": {"title": f"🤖 每日Techmeme AI 前沿资讯{title_suffix}", "content": post_elements}}}
+        }
 
-    try:
-        response = requests.post(webhook_url, json=payload, timeout=10)
-        response.raise_for_status()
-        print(f"\n✅ 成功推送到飞书！响应: {response.text}")
-    except Exception as e:
-        print(f"\n❌ 推送飞书失败: {e}")
+        try:
+            response = requests.post(webhook_url, json=payload, timeout=10)
+            response.raise_for_status()
+            print(f"\n✅ 成功推送到飞书 ({start_idx}-{end_idx})！响应: {response.text}")
+        except Exception as e:
+            print(f"\n❌ 推送飞书失败 ({start_idx}-{end_idx}): {e}")
 
 def scrape_techmeme_ai_news():
     url = "https://techmeme.com/"
