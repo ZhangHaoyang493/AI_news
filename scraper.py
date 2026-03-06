@@ -38,7 +38,10 @@ def send_to_feishu(results, webhook_url):
             {"tag": "a", "text": display_title, "href": link}
         ])
         if display_title != en_title:
-             post_elements.append([{"tag": "text", "text": f"   原文: {en_title}\n"}])
+             post_elements.append([{"tag": "text", "text": f"   原文: {en_title}"}])
+             
+        # 添加一个空段落，保证两条新闻之间有空白行分隔，增加易读性
+        post_elements.append([{"tag": "text", "text": ""}])
              
     payload = {
         "msg_type": "post",
