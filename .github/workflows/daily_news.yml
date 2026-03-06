@@ -2,8 +2,8 @@ name: Daily AI News to Feishu
 
 on:
   schedule:
-    # 每天北京时间下午 13:00 (UTC 时间 5:00) 触发
-    - cron: '0 5 * * *'
+    # 每天北京时间中午 12:00 (UTC 时间 4:00) 和 傍晚 18:00 (UTC 时间 10:00) 触发
+    - cron: '0 4,10 * * *'
   workflow_dispatch: # 允许在 GitHub Action 页面手动触发运行
 
 jobs:

@@ -4,7 +4,7 @@ import re
 import os
 from openai import OpenAI
 import json
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 def translate_title(title, client):
     """调用 AI 接口翻译标题"""
@@ -28,7 +28,9 @@ def send_to_feishu(results, webhook_url):
 
     batch_size = 5
     total = len(results)
-    current_date = datetime.now().strftime("%Y-%m-%d")
+    # 获取北京时间
+    beijing_tz = timezone(timedelta(hours=8))
+    current_time = datetime.now(beijing_tz).strftime("%Y-%m-%d %H:%M")
     
     for batch_index in range(0, total, batch_size):
         batch = results[batch_index : batch_index + batch_size]
@@ -54,7 +56,7 @@ def send_to_feishu(results, webhook_url):
                  
         start_idx = batch_index + 1
         end_idx = batch_index + len(batch)
-        title_suffix = f" [{current_date}] (第 {start_idx}-{end_idx} 条，共 {total} 条)"
+        title_suffix = f" [{current_time}] (第 {start_idx}-{end_idx} 条，共 {total} 条)"
         
         payload = {
             "msg_type": "post",
