@@ -26,9 +26,10 @@ git push -u origin master
 1. 打开您的 GitHub 仓库页面，点击上方的 **Settings** 选项卡。
 2. 在左侧菜单栏展开 **Secrets and variables**，点击 **Actions**。
 3. 点击 **New repository secret** 按钮。
-4. 创建第一个 Secret 存放 AI 翻译的 Key：
-   - Name: `OPENAI_API_KEY`
-   - Secret: `your_api_key`
+4. 创建 AI 翻译相关 Secret：
+   - `TRANSLATE_PROVIDER`：可选 `deepseek` 或 `ecnu`
+   - 如果 `TRANSLATE_PROVIDER=deepseek`：设置 `DEEPSEEK_API_KEY`
+   - 如果 `TRANSLATE_PROVIDER=ecnu`：设置 `ECNU_API_KEY`
 5. 创建第二个 Secret 存放飞书的推送地址：
    - Name: `FEISHU_WEBHOOK`
    - Secret: `之前复制的飞书Webhook URL`
@@ -49,18 +50,27 @@ git push -u origin master
 
 ### 1. 配置环境变量 (可选，用于 AI 翻译)
 
-如果在翻译功能中您想要使用 OpenAI 的大语言模型对抓取到的资讯进行英译中操作，请先在终端中设置好 API Key 环境变量：
+翻译支持两种提供方，通过 `TRANSLATE_PROVIDER` 切换：
+
+- `deepseek`：`DEEPSEEK_API_KEY` + `deepseek-chat` + `https://api.deepseek.com/v1`
+- `ecnu`：`ECNU_API_KEY` + `ecnu-plus` + `https://chat.ecnu.edu.cn/open/api/v1/chat/completions`
+
+请先在终端中设置环境变量：
 
 - **macOS / Linux**:
   ```bash
-  export OPENAI_API_KEY="您的_API_KEY"
+  export TRANSLATE_PROVIDER="deepseek"   # 或 ecnu
+  export DEEPSEEK_API_KEY="您的_API_KEY" # deepseek 模式
+  export ECNU_API_KEY="您的_API_KEY"     # ecnu 模式
   ```
 - **Windows (PowerShell)**:
   ```powershell
-  $env:OPENAI_API_KEY="您的_API_KEY"
+  $env:TRANSLATE_PROVIDER="deepseek"   # 或 ecnu
+  $env:DEEPSEEK_API_KEY="您的_API_KEY" # deepseek 模式
+  $env:ECNU_API_KEY="您的_API_KEY"     # ecnu 模式
   ```
 > 💡 *提示：如果不配置该环境变量，爬虫将跳过翻译功能，只保留空字符串的占位符。*
-> 💡 *默认翻译模型为 `deepseek-chat`，如需切换可设置 `TRANSLATE_MODEL` 环境变量。*
+> 💡 *默认提供方为 `deepseek`。*
 
 ### 2. 创建虚拟环境
 

@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+
+fetch_news.py
