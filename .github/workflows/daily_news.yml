@@ -27,7 +27,9 @@ jobs:
         
     - name: Run Scraper
       env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        TRANSLATE_PROVIDER: ${{ secrets.TRANSLATE_PROVIDER }}
+        DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        ECNU_API_KEY: ${{ secrets.ECNU_API_KEY }}
         FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
       run: |
         python scraper.py
