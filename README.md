@@ -1,10 +1,10 @@
-# Techmeme AI News Scraper
+# Hacker News AI News Scraper
 
-这是一个简单的 Python 爬虫，用于快速抓取 [Techmeme](https://techmeme.com/) 首页上与 AI（人工智能、大模型等）相关的最新重点资讯。
+这是一个简单的 Python 爬虫，用于快速抓取 [Hacker News](https://news.ycombinator.com/news) 页面上与 AI（人工智能、大模型等）相关的最新重点资讯。
 
 ## 使用 GitHub Actions 每日自动推送到飞书
 
-我们目前已经配置好了 GitHub Actions 工作流(`.github/workflows/daily_news.yml`)，它会在每天中国北京时间中午 12:00（UTC时间 4:00）和 傍晚 18:00（UTC时间 10:00）自动运行。如果您想启用它推送到飞书，只需按照以下步骤设置：
+我们目前已经配置好了 GitHub Actions 工作流(`.github/workflows/daily_news.yml`)，它会在每天中国北京时间中午 12:00（UTC时间 4:00）自动运行。如果您想启用它推送到飞书，只需按照以下步骤设置：
 
 ### 1. 将项目推送到您的 GitHub 个人仓库
 ```bash
@@ -33,7 +33,7 @@ git push -u origin master
    - Name: `FEISHU_WEBHOOK`
    - Secret: `之前复制的飞书Webhook URL`
 
-完成配置后，Action 就能够自动抓取资讯、翻译并在每天中午 12 点和下午 6 点将新鲜结果直接发在您的飞书群里啦！您也可以在 GitHub的 "Actions" 页面手动点击 "Run workflow" 测试一次。
+完成配置后，Action 就能够自动抓取资讯、翻译并在每天中午 12 点将新鲜结果直接发在您的飞书群里啦！您也可以在 GitHub的 "Actions" 页面手动点击 "Run workflow" 测试一次。
 
 ---
 

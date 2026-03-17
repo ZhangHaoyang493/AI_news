@@ -60,7 +60,7 @@ def send_to_feishu(results, webhook_url):
         
         payload = {
             "msg_type": "post",
-            "content": {"post": {"zh_cn": {"title": f"🤖 每日Techmeme AI 前沿资讯{title_suffix}", "content": post_elements}}}
+            "content": {"post": {"zh_cn": {"title": f"🤖 每日 Hacker News AI 前沿资讯{title_suffix}", "content": post_elements}}}
         }
 
         try:
@@ -70,8 +70,8 @@ def send_to_feishu(results, webhook_url):
         except Exception as e:
             print(f"\n❌ 推送飞书失败 ({start_idx}-{end_idx}): {e}")
 
-def scrape_techmeme_ai_news():
-    url = "https://techmeme.com/"
+def scrape_hackernews_ai_news():
+    url = "https://news.ycombinator.com/news"
     # 添加 User-Agent 防止被网站当做 bot 直接拒绝
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -93,19 +93,13 @@ def scrape_techmeme_ai_news():
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print(f"❌ 访问 Techmeme 失败: {e}")
+        print(f"❌ 访问 Hacker News 失败: {e}")
         return
 
     soup = BeautifulSoup(response.text, 'html.parser')
-    
-    # Techmeme 的主要新闻标题通常带有 'ourh' class，或者存在于特定结构中
-    # 这里抓取带有 'ourh' 类的 a 标签，如果网站结构更新，可能需要调整 class
-    headlines = soup.find_all('a', class_='ourh')
-    
-    # 如果没找到，退化为查找所有的重要标题(Techmeme 特色的 strong a)
-    if not headlines:
-        strong_tags = soup.find_all('strong')
-        headlines = [strong.find('a') for strong in strong_tags if strong.find('a')]
+
+    # Hacker News 标题位于 span.titleline > a
+    headlines = soup.select('span.titleline > a')
 
     # 定义 AI 相关的关键词（不区分大小写）
     ai_keywords = [
@@ -114,7 +108,7 @@ def scrape_techmeme_ai_news():
         'copilot', 'midjourney', 'sam altman', 'deepmind'
     ]
     
-    print("🤖 正在从 Techmeme 获取 AI 资讯...\n" + "="*40)
+    print("🤖 正在从 Hacker News 获取 AI 资讯...\n" + "="*40)
     
     found_links = set()
     results = [] # 保存结果的列表
@@ -175,6 +169,5 @@ def scrape_techmeme_ai_news():
             print("ℹ️ 未检测到 FEISHU_WEBHOOK 环境变量，不在飞书进行推送。")
 
 if __name__ == "__main__":
-    scrape_techmeme_ai_news()
-
+    scrape_hackernews_ai_news()
 
