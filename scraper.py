@@ -60,6 +60,95 @@ def translate_title(title, client, model_name, provider, base_url, api_key):
     except Exception as e:
         return f"[翻译失败: {e}]"
 
+def summarize_text(raw_text, client, model_name, provider, base_url, api_key, source_type):
+    """调用 AI 接口生成摘要"""
+    if not raw_text:
+        return "获取新闻源信息失败（内容为空）"
+    try:
+        source_hint = "新闻原文" if source_type == "article" else "Hacker News 讨论"
+        messages = [
+            {"role": "system", "content": "你是科技新闻编辑。请基于给定内容输出简洁中文摘要（2-4句），聚焦核心事实、结论与影响。不要编造。"},
+            {"role": "user", "content": f"内容来源：{source_hint}\n\n请总结以下内容：\n{raw_text[:5000]}"}
+        ]
+
+        if provider == "ecnu":
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": model_name,
+                "messages": messages,
+                "temperature": 0.3
+            }
+            response = requests.post(base_url, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            return data["choices"][0]["message"]["content"].strip()
+
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            temperature=0.3
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"获取新闻源信息失败（摘要生成失败: {e}）"
+
+def fetch_article_content(url):
+    """抓取原网站正文文本"""
+    if not url or not url.startswith("http"):
+        return ""
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=8)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        for tag in soup(["script", "style", "nav", "footer", "header", "noscript"]):
+            tag.extract()
+        text = soup.get_text(separator=" ", strip=True)
+        return re.sub(r"\s+", " ", text).strip()[:8000]
+    except Exception:
+        return ""
+
+def fetch_hn_discussion_content(hn_url):
+    """抓取 HN 讨论文本（Algolia Items API）"""
+    if not hn_url:
+        return ""
+    match = re.search(r"id=(\d+)", hn_url)
+    if not match:
+        return ""
+    item_id = match.group(1)
+    try:
+        data = requests.get(f"https://hn.algolia.com/api/v1/items/{item_id}", timeout=10).json()
+        comments = []
+
+        def walk(node):
+            html_text = node.get("text") or ""
+            if html_text:
+                clean = BeautifulSoup(html_text, "html.parser").get_text(" ", strip=True)
+                clean = re.sub(r"\s+", " ", clean).strip()
+                if clean:
+                    comments.append(clean)
+            for child in node.get("children", []):
+                walk(child)
+
+        walk(data)
+        return " ".join(comments)[:8000]
+    except Exception:
+        return ""
+
+def build_summary(link, hn_url, client, model_name, provider, base_url, api_key):
+    """优先总结原文，失败时回退总结 HN 讨论"""
+    article_text = fetch_article_content(link)
+    if article_text:
+        return summarize_text(article_text, client, model_name, provider, base_url, api_key, "article"), "原文"
+
+    hn_text = fetch_hn_discussion_content(hn_url)
+    if hn_text:
+        return summarize_text(hn_text, client, model_name, provider, base_url, api_key, "hn_discussion"), "HN讨论"
+
+    return "获取新闻源信息失败（原文与 HN 讨论均不可用）", "失败"
+
 def is_balance_related_error(error_text):
     """判断翻译失败是否与余额/配额不足相关"""
     if not error_text:
@@ -125,6 +214,8 @@ def send_to_feishu(results, webhook_url):
             hn_url = item.get("hn_url", "")
             heat = item.get("heat", "")
             time_str = item.get("time", "")
+            summary = item.get("summary", "")
+            summary_source = item.get("summary_source", "")
             
             display_title = zh_title if zh_title and not zh_title.startswith("[翻译失败:") else en_title
             
@@ -139,6 +230,10 @@ def send_to_feishu(results, webhook_url):
                 post_elements.append([{"tag": "a", "text": "   原文链接", "href": link}])
             if hn_url:
                 post_elements.append([{"tag": "a", "text": "   Hacker News 讨论", "href": hn_url}])
+            if summary:
+                if summary_source:
+                    post_elements.append([{"tag": "text", "text": f"   摘要来源: {summary_source}"}])
+                post_elements.append([{"tag": "text", "text": f"   摘要: {summary}"}])
                  
             # 添加一个空段落，保证两条新闻之间有空白行分隔，增加易读性
             post_elements.append([{"tag": "text", "text": ""}])
@@ -298,6 +393,20 @@ def scrape_hackernews_ai_news():
             print(f"🔄 正在翻译第 {idx} 条资讯...")
             zh_translation = translate_title(title, client, model_name, provider, base_url, api_key)
 
+        summary = "获取新闻源信息失败（未配置模型）"
+        summary_source = "失败"
+        if api_key and (provider == "ecnu" or client):
+            print(f"📝 正在生成第 {idx} 条摘要...")
+            summary, summary_source = build_summary(
+                link=link,
+                hn_url=item.get("hn_url", ""),
+                client=client,
+                model_name=model_name,
+                provider=provider,
+                base_url=base_url,
+                api_key=api_key
+            )
+
         news_item = {
             "english_title": title,
             "chinese_translation": zh_translation,
@@ -305,7 +414,9 @@ def scrape_hackernews_ai_news():
             "source": item.get("source", "Hacker News"),
             "hn_url": item.get("hn_url", ""),
             "heat": item.get("heat", ""),
-            "time": item.get("time", "")
+            "time": item.get("time", ""),
+            "summary": summary,
+            "summary_source": summary_source
         }
         results.append(news_item)
 

@@ -1,6 +1,17 @@
 # Hacker News AI News Scraper
 
-这是一个简单的 Python 爬虫，用于快速抓取 [Hacker News](https://news.ycombinator.com/news) 页面上与 AI（人工智能、大模型等）相关的最新重点资讯。
+这是一个简单的 Python 爬虫，用于抓取 [Hacker News](https://news.ycombinator.com/news) 热门新闻，并自动翻译标题、生成摘要后推送到飞书。
+
+## 功能说明
+
+- 抓取口径与 `python3 fetch_news.py --source hackernews` 保持一致
+- 默认抓取并推送 20 条新闻（可通过 `HACKERNEWS_LIMIT` 覆盖）
+- 支持两种翻译/摘要模型提供方：`deepseek` / `ecnu`
+- 每条推送包含完整字段：中文标题、英文标题、来源、热度、时间、原文链接、HN 讨论链接、摘要
+- 摘要回退机制：
+  - 优先抓取原文网页并生成摘要
+  - 原文抓取失败时，自动改为基于 Hacker News 讨论生成摘要
+  - 两者都失败时显示“获取新闻源信息失败”
 
 ## 使用 GitHub Actions 每日自动推送到飞书
 
@@ -50,7 +61,7 @@ git push -u origin master
 
 ### 1. 配置环境变量 (可选，用于 AI 翻译)
 
-翻译支持两种提供方，通过 `TRANSLATE_PROVIDER` 切换：
+翻译与摘要都使用同一模型提供方，通过 `TRANSLATE_PROVIDER` 切换：
 
 - `deepseek`：`DEEPSEEK_API_KEY` + `deepseek-chat` + `https://api.deepseek.com/v1`
 - `ecnu`：`ECNU_API_KEY` + `ecnu-plus` + `https://chat.ecnu.edu.cn/open/api/v1/chat/completions`
@@ -71,6 +82,7 @@ git push -u origin master
   ```
 > 💡 *提示：如果不配置该环境变量，爬虫将跳过翻译功能，只保留空字符串的占位符。*
 > 💡 *默认提供方为 `deepseek`。*
+> 💡 *可选配置 `HACKERNEWS_LIMIT`，默认值为 `20`。*
 
 ### 2. 创建虚拟环境
 
