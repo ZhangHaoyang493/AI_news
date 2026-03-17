@@ -60,6 +60,7 @@ git push -u origin master
   $env:OPENAI_API_KEY="您的_API_KEY"
   ```
 > 💡 *提示：如果不配置该环境变量，爬虫将跳过翻译功能，只保留空字符串的占位符。*
+> 💡 *默认翻译模型为 `deepseek-chat`，如需切换可设置 `TRANSLATE_MODEL` 环境变量。*
 
 ### 2. 创建虚拟环境
 

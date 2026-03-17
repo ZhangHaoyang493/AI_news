@@ -6,11 +6,11 @@ from openai import OpenAI
 import json
 from datetime import datetime, timezone, timedelta
 
-def translate_title(title, client):
+def translate_title(title, client, model_name):
     """调用 AI 接口翻译标题"""
     try:
         response = client.chat.completions.create(
-            model="ecnu-plus",
+            model=model_name,
             messages=[
                 {"role": "system", "content": "你是一个专业的科技新闻翻译人员。请将给定的英文科技新闻标题翻译成地道流畅的中文。只返回翻译后的文本，不要包含任何多余的解释。"},
                 {"role": "user", "content": title}
@@ -21,10 +21,38 @@ def translate_title(title, client):
     except Exception as e:
         return f"[翻译失败: {e}]"
 
+def is_balance_related_error(error_text):
+    """判断翻译失败是否与余额/配额不足相关"""
+    if not error_text:
+        return False
+
+    text = error_text.lower()
+    balance_patterns = [
+        "insufficient",
+        "insufficient_quota",
+        "quota",
+        "balance",
+        "credit",
+        "额度",
+        "余额",
+        "配额",
+        "欠费",
+        "用尽"
+    ]
+    return any(pattern in text for pattern in balance_patterns)
+
 def send_to_feishu(results, webhook_url):
     """将结果推送到飞书群机器人（每5条分割为一条消息）"""
     if not results:
         return
+
+    failed_items = [
+        item for item in results
+        if item.get("chinese_translation", "").startswith("[翻译失败:")
+    ]
+    balance_failed_count = sum(
+        1 for item in failed_items if is_balance_related_error(item.get("chinese_translation", ""))
+    )
 
     batch_size = 5
     total = len(results)
@@ -35,6 +63,19 @@ def send_to_feishu(results, webhook_url):
     for batch_index in range(0, total, batch_size):
         batch = results[batch_index : batch_index + batch_size]
         post_elements = []
+
+        if batch_index == 0 and failed_items:
+            if balance_failed_count > 0:
+                post_elements.append([{
+                    "tag": "text",
+                    "text": f"⚠️ 翻译预警：检测到 {balance_failed_count} 条疑似因 DeepSeek token 余额/配额不足导致翻译失败，请尽快检查账户余额。"
+                }])
+            else:
+                post_elements.append([{
+                    "tag": "text",
+                    "text": f"⚠️ 翻译预警：检测到 {len(failed_items)} 条翻译失败，请检查 DeepSeek 服务状态、模型权限或 API 配置。"
+                }])
+            post_elements.append([{"tag": "text", "text": ""}])
         
         for local_i, item in enumerate(batch):
             i = batch_index + local_i + 1
@@ -79,6 +120,7 @@ def scrape_hackernews_ai_news():
     
     # 初始化 OpenAI 客户端
     api_key = os.environ.get("OPENAI_API_KEY")
+    model_name = os.environ.get("TRANSLATE_MODEL", "deepseek-chat")
     client = None
     if not api_key:
         print("⚠️ 未检测到 OPENAI_API_KEY 环境变量，将跳过中文翻译。您可以执行 `export OPENAI_API_KEY='your_key'` 来设置。\n")
@@ -141,7 +183,7 @@ def scrape_hackernews_ai_news():
             zh_translation = ""
             if client:
                 print(f"🔄 正在翻译第 {count} 条资讯...")
-                zh_translation = translate_title(title, client)
+                zh_translation = translate_title(title, client, model_name)
             
             # 组装字典
             news_item = {
@@ -170,4 +212,3 @@ def scrape_hackernews_ai_news():
 
 if __name__ == "__main__":
     scrape_hackernews_ai_news()
-
