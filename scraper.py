@@ -259,7 +259,7 @@ def fetch_hackernews_same_as_fetch_news(limit=10, keyword=None):
     return news_items[:limit]
 
 def scrape_hackernews_ai_news():
-    limit = int(os.environ.get("HACKERNEWS_LIMIT", "10"))
+    limit = int(os.environ.get("HACKERNEWS_LIMIT", "20"))
 
     translate_cfg = get_translate_config()
     provider = translate_cfg["provider"]
